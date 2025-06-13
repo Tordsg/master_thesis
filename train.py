@@ -1,20 +1,14 @@
-#!/usr/bin/env python3
-# This script is a simplified version of compare_novel_learning.py
-# It only measures for one loss (normal_loss) and removes all novel loss functionality and loops over multiple losses.
 
 import os
 import torch
 from torchmetrics.image.psnr import PeakSignalNoiseRatio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 import skimage
-import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm import tqdm
 import numpy as np
-import tikzplotlib
-from networks import Siren, HashRelu, HashSIREN
-from utils import plot_activations_spectrum_and_gradients_weights_with_tikz, transform_normalized, record_activation, capture_activations, plot_compare_steps, plot_compare_time, save_metrics_to_csv
-from utils import normal_loss
+from networks import HashRelu, HashSIREN
+from utils import transform_normalized, plot_compare_steps, plot_compare_time, save_metrics_to_csv
 import time
 
 torch.set_float32_matmul_precision('high')
@@ -22,8 +16,8 @@ torch.set_float32_matmul_precision('high')
 psnr_metric = PeakSignalNoiseRatio(data_range=2.0).cuda()
 ssim_metric = StructuralSimilarityIndexMeasure(data_range=2.0).cuda()
 
-output_base_dir = "novel_single_loss"
-test_name = "novel_single_loss"
+output_base_dir = "train"
+test_name = "train"
 os.makedirs(output_base_dir, exist_ok=True)
 
 total_steps = 3000
@@ -40,6 +34,7 @@ models = {
 }
 images = {
     "cameraman": transform_normalized(Image.fromarray(skimage.data.camera())),
+    "eagle": transform_normalized(Image.fromarray(skimage.data.eagle())), 
     "tokyo": transform_normalized(Image.open("tokyo_crop.jpg").convert("L"))
 }
 

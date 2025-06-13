@@ -4,7 +4,8 @@ This repository contains scripts for comparing neural field models (SIREN, HashS
 
 ## 📂 Key Files
 
-- `compare_novel_learning.py` — Main script for training and comparing models.
+- `compare_novel_learning.py` — Main script for training and comparing models with multiple loss functions.
+- `train.py` — Simplified script that only measures for one loss (normal_loss) and uses single lists for metrics.
 - `networks.py` — Model definitions (uses [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) Python bindings).
 - `utils.py` — Utility functions for training, metrics, and visualization.
 
@@ -48,7 +49,7 @@ If you build from source, make sure the Python bindings are discoverable (add to
 
 ### 4. Prepare Data
 
-Place your input image (e.g., `tokyo_crop.jpg`) in the repository root or update the path in `compare_novel_learning.py`.
+Place your input image (e.g., `tokyo_crop.jpg`) in the repository root or update the path in the scripts.
 
 ### 5. Run the Comparison Script
 
@@ -58,12 +59,27 @@ python compare_novel_learning.py
 
 This will train and compare the models, saving results and plots in the `novel/` directory.
 
+### 6. Run the Simplified Training Script
+
+```bash
+python train.py
+```
+
+This script only measures for one loss (normal_loss) and uses single lists for metrics, saving results in the `train/` directory.
+
 ## 📝 Notes
 
-- The script requires a CUDA-capable GPU.
-- You can adjust hyperparameters, models, and images at the top of `compare_novel_learning.py`.
-- Results (metrics, images, plots) are saved in subfolders of `novel/`.
+- The scripts require a CUDA-capable GPU.
+- You can adjust hyperparameters, models, and images at the top of the scripts.
+- Results (metrics, images, plots) are saved in subfolders of `novel/` and `train/`.
 
 ## 📧 Contact
 
-For questions or contributions, open an issue or contact [@Tordsg](https://github.com/Tordsg). 
+For questions or contributions, open an issue or contact [@Tordsg](https://github.com/Tordsg).
+
+## 📚 References
+
+- Sitzmann, V., Martel, J. N. P., Bergman, A. W., Lindell, D. B., & Wetzstein, G. (2020). "Implicit Neural Representations with Periodic Activation Functions (SIREN)." *NeurIPS 2020*. [arXiv:2006.09661](https://arxiv.org/abs/2006.09661)
+- Müller, T., Evans, A., Schied, C., & Keller, A. (2022). "Instant Neural Graphics Primitives with a Multiresolution Hash Encoding." *SIGGRAPH 2022*. [arXiv:2201.05989](https://arxiv.org/abs/2201.05989)  
+  (HashReLU and HashSIREN are based on this hash encoding framework)
+- tiny-cuda-nn: [https://github.com/NVlabs/tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) 
