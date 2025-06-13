@@ -1,0 +1,21 @@
+name: master-thesis
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch
+  - torchvision
+  - cudatoolkit=11.3  # or match your CUDA version
+  - pip
+  - pip:
+      - torchmetrics
+      - scikit-image
+      - matplotlib
+      - pillow
+      - tqdm
+      - numpy
+      - tikzplotlib
+      # tinycudann should be installed via pip or from source after environment creation 
