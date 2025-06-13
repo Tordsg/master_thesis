@@ -502,50 +502,7 @@ def record_activation(activations: dict, activations_gradients: dict, name: str)
             activations_gradients[name] = grad.detach()
         output.register_hook(grad_hook)
     return hook
-        
-        
-def compute_radial_distribution(spectrum):
-    n = spectrum.shape[0]
-    max_radial_distance = int(np.sqrt(2) * (n // 2))
-    radial_distribution = np.zeros(max_radial_distance)
-
-    # Compute radial distances from the center of the spectrum
-    center = n // 2
-    for i in range(n):
-        for j in range(n):
-            radial_distance = int(np.sqrt((i - center)**2 + (j - center)**2))
-            if radial_distance < max_radial_distance:
-                radial_distribution[radial_distance] += spectrum[i, j]
-
-    # Normalize the distribution
-    # radial_distribution /= np.max(radial_distribution)
-    return radial_distribution
-
-def process_image(model, coords_full, img_height, img_width, batch_size=5000*1000):
-    """
-    Evaluates the model on all image pixels in chunks (to fit in memory).
-    Returns the full image output as a numpy array.
-    """
-    model.eval()  # Set model to evaluation mode
-    with torch.no_grad():
-        full_image = torch.zeros(img_height*img_width,3).cuda().half()
-        for i in range(0, img_height * img_width, int(batch_size)):
-            start = i
-            end = int(min(start + batch_size, img_height * img_width))
-            coords = coords_full[start:end]
-            output = model(coords)
-            full_image[start:end] = output
-        # image = ((full_image + 1) / 2 * 255).round().clamp(0, 255).to(torch.uint8).reshape(img_height, img_width, 3).cpu().numpy()
-        image = full_image.reshape(img_height, img_width, 3).permute(2,0,1)
-    model.train()  # Set model back to training mode
-    return image
-
-def transform(image):
-    transform = Compose([
-        Resize((image.height, image.width)),
-        ToTensor()
-    ])
-    return transform(image)
+    
 
 def transform_normalized(image):
     transform = Compose([
@@ -554,29 +511,6 @@ def transform_normalized(image):
         Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
     ])
     return transform(image)
-
-def save_hsv_combination(x_component, y_component, output_path):
-    magnitude = torch.sqrt(x_component**2 + y_component**2)
-    angle = torch.atan2(y_component, x_component)  # range [-pi, pi]
-
-    # Normalize magnitude to [0, 1]
-    magnitude = magnitude / (magnitude.max() + 1e-8)
-
-    # Normalize angle to [0, 1] for hue (HSV expects hue in [0,1])
-    hue = (angle + torch.pi) / (2 * torch.pi)
-
-    # Create saturation channel (full)
-    saturation = torch.ones_like(hue)
-
-    # Stack HSV channels into one tensor: shape (H, W, 3)
-    hsv = torch.stack((hue, saturation, magnitude), dim=-1).cpu().numpy()
-
-    # Convert HSV to RGB using matplotlib
-    rgb = matplotlib.colors.hsv_to_rgb(hsv)
-
-    # Save the image
-    plt.imsave(output_path, rgb)
-    plt.close()
 
 
 grad = lambda k: 1j * k * 2 * np.pi

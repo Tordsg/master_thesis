@@ -14,17 +14,19 @@ from utils import grad, amplitude_grad, low_pass_frequency, high_pass_frequency,
 from utils import fourier_grad_loss, fourier_grad_loss_inverse, fourier_amplitude_grad_loss, fourier_amplitude_grad_loss_inverse, fourier_weighted_frequency_loss, fourier_weighted_frequency_loss_inverse, sobel_grad_loss, kernel_grad_loss, auto_grad_loss, grad_loss, normal_loss
 from utils import visualize_fourier_grad_loss, visualize_fourier_grad_loss_inverse, visualize_fourier_amplitude_grad_loss, visualize_fourier_amplitude_grad_loss_inverse, visualize_fourier_weighted_frequency_loss, visualize_fourier_weighted_frequency_loss_inverse, visualize_sobel_grad_loss, visualize_kernel_grad_loss, visualize_auto_grad_loss, visualize_grad_loss
 import time
+
 # Set high precision for float32 matrix multiplication
 # and record CUDA memory history
 torch.set_float32_matmul_precision('high')
 # torch.cuda.memory._record_memory_history(max_entries=100000)
 
-
+# Initialize metrics and containers
 psnr_metric = PeakSignalNoiseRatio(data_range=2.0).cuda()
 ssim_metric = StructuralSimilarityIndexMeasure(data_range=2.0).cuda()
 activations = {}
 activations_gradients = {}
 
+# Output and training parameters
 output_base_dir = "novel"
 test_name = "novel"
 os.makedirs(output_base_dir, exist_ok=True)
@@ -39,7 +41,7 @@ n_runs = 5
 LAMBDA = 0
 LAMBDA_LOW = 0.1
 
-
+# Model, image, and loss setup
 models = {
     # "SIREN": Siren,
     "HashSIREN": HashSIREN,
@@ -50,7 +52,6 @@ images = {
     # "eagle": transform_normalized(Image.fromarray(skimage.data.eagle())),
     "tokyo": transform_normalized(Image.open("tokyo_crop.jpg").convert("L"))
 }
-
 
 hyperparameters = {'normal_loss': normal_loss, 
                    'grad_loss': grad_loss,
@@ -65,6 +66,7 @@ hyperparameters = {'normal_loss': normal_loss,
                    'fourier_weighted_frequency_loss_inverse': fourier_weighted_frequency_loss_inverse,
 }
 
+# Prepare visualization grids
 visual_gt = torch.zeros(256, 256).cuda()
 visual_gt_complex = torch.complex(visual_gt, torch.zeros(256, 256).cuda())
 visual_kx, visual_ky = torch.meshgrid(
@@ -74,8 +76,10 @@ visual_kx, visual_ky = torch.meshgrid(
 )
 visual_kx, visual_ky = torch.fft.fftshift(visual_kx.cuda()), torch.fft.fftshift(visual_ky.cuda())
 
+# Main training and evaluation loop
 for image_name, image_tensor in images.items():
     for model_name, model_class in models.items():
+        # Prepare input grids for each model
         if model_name != 'SIREN':
             visual_input = torch.stack(torch.meshgrid(
                 torch.linspace(0, 1, steps=256),
@@ -98,7 +102,7 @@ for image_name, image_tensor in images.items():
                 torch.linspace(-1, 1, steps=image_tensor.shape[2]),
                 indexing = "ij"
             ), dim=-1).reshape(-1, 2).cuda()
-            
+        
         kx, ky = torch.meshgrid(
             torch.fft.fftfreq(image_tensor.shape[1]),
             torch.fft.fftfreq(image_tensor.shape[2]),
@@ -112,6 +116,7 @@ for image_name, image_tensor in images.items():
         os.makedirs(model_dir, exist_ok=True)
 
         for hyperparameter, loss_function in hyperparameters.items():
+            # Loop over all loss functions
             psnr_dict[hyperparameter] = []
             time_dict[hyperparameter] = []
             ssim_dict[hyperparameter] = []
@@ -121,6 +126,7 @@ for image_name, image_tensor in images.items():
             model_input = model_input.detach().requires_grad_(True)
             ground_truth = image_tensor.squeeze(0).cuda().detach()
             
+            # Prepare ground truth gradients/fourier for some losses
             if hyperparameter == 'auto_grad_loss' and model_name == 'SIREN':
                 gt_grad_x = torch.gradient(ground_truth, dim=0)[0]
                 gt_grad_y = torch.gradient(ground_truth, dim=1)[0]
@@ -162,6 +168,7 @@ for image_name, image_tensor in images.items():
             else:
                 continue
             for i in range(n_runs):
+                # Training loop for each run
                 model = model_class().cuda()
                 optim = torch.optim.Adam(lr=1e-4, params=model.parameters())
                 psnr_values = []
@@ -169,9 +176,11 @@ for image_name, image_tensor in images.items():
                 time_values = []
                 model.eval()
                 if i == 0 and activation_start:
+                    # Optionally record activations before training
                     with capture_activations(model, record_activation,activations, activations_gradients):
                         visual_input = visual_input.detach().requires_grad_(True)
                         visual_output = model(visual_input).squeeze(1)
+                        # Compute loss for activations
                         if hyperparameter == 'fourier_grad_loss':
                             loss = loss_function(visual_output, visual_kx, visual_ky, visual_gt, visual_gt, visual_gt, grad_fn=grad, LAMBDA=LAMBDA, step=1, print_loss_interval=print_loss_interval)
                         elif hyperparameter == 'fourier_grad_loss_inverse':
@@ -205,11 +214,13 @@ for image_name, image_tensor in images.items():
                     visual_input = visual_input.detach()
                     model.train()
                 for step in tqdm(range(0, total_steps + 1), desc=f"Training INR {model_name} on {image_name} with hyperparameter: {hyperparameter}"):
+                    # Main training loop
                     start_time = time.time()
                     optim.zero_grad()
                     # Detach model_input to prevent graph reuse
                     model_input = model_input.detach().requires_grad_(True)
                     model_output = model(model_input)
+                    # Compute loss for current step
                     if hyperparameter == 'fourier_grad_loss':
                         loss = loss_function(model_output, kx, ky, fourier_gt_grad_x, fourier_gt_grad_y, fourier_gt, grad_fn=grad, LAMBDA=LAMBDA, step=step, print_loss_interval=print_loss_interval)
                     elif hyperparameter == 'fourier_grad_loss_inverse':
@@ -239,10 +250,12 @@ for image_name, image_tensor in images.items():
                     end_time = time.time()
                     time_values.append(end_time - start_time)
                     if step % activation_interval == 0 and step != 0 and i == 0:
+                        # Optionally record activations during training
                         model.eval()
                         with capture_activations(model, record_activation,activations, activations_gradients):
                             visual_input = visual_input.detach().requires_grad_(True)
                             visual_output = model(visual_input)
+                            # Compute loss for activations
                             if hyperparameter == 'fourier_grad_loss':
                                 loss = loss_function(visual_output, visual_kx, visual_ky, visual_gt, visual_gt, visual_gt, grad_fn=grad, LAMBDA=LAMBDA, step=1, print_loss_interval=print_loss_interval)
                             elif hyperparameter == 'fourier_grad_loss_inverse':
@@ -276,6 +289,7 @@ for image_name, image_tensor in images.items():
                         model.train()
                         
                     if step % psnr_interval == 0:
+                        # Record PSNR and SSIM
                         psnr_value = psnr_metric(model_output.detach().squeeze(), ground_truth.detach().flatten())
                         psnr_values.append(psnr_value.item())
                         reshaped_model_output = model_output.detach().reshape(image_tensor.shape[1], image_tensor.shape[2]) 
@@ -284,6 +298,7 @@ for image_name, image_tensor in images.items():
                         ssim_values.append(ssim_value.item())
                         
                     if step % image_interval == 0 and i == 0:
+                        # Save output images and visualizations
                         img = ((model_output.detach().reshape(image_tensor.shape[1], image_tensor.shape[2]).clamp(-1,1)+1)/2*255).round().to(torch.uint8).cpu().numpy()
                         pil_img = Image.fromarray(img)
                         resolutions = [image_tensor.shape[1], image_tensor.shape[2]]
@@ -332,6 +347,7 @@ for image_name, image_tensor in images.items():
                 ssim_dict[hyperparameter].append(ssim_values)
                 time_dict[hyperparameter].append(time_values)
 
+        # Compute and save metrics, plots for all losses
         psnr_mean_std = {}
         ssim_mean_std = {}
         mean_time_ticks = {}

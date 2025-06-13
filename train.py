@@ -1,4 +1,3 @@
-
 import os
 import torch
 from torchmetrics.image.psnr import PeakSignalNoiseRatio
@@ -7,12 +6,13 @@ import skimage
 from PIL import Image
 from tqdm import tqdm
 import numpy as np
-from networks import HashRelu, HashSIREN
+from networks import HashRelu, HashSIREN, Siren
 from utils import transform_normalized, plot_compare_steps, plot_compare_time, save_metrics_to_csv
 import time
 
 torch.set_float32_matmul_precision('high')
 
+# Initialize metrics
 psnr_metric = PeakSignalNoiseRatio(data_range=2.0).cuda()
 ssim_metric = StructuralSimilarityIndexMeasure(data_range=2.0).cuda()
 
@@ -20,6 +20,7 @@ output_base_dir = "train"
 test_name = "train"
 os.makedirs(output_base_dir, exist_ok=True)
 
+# Training parameters
 total_steps = 3000
 image_interval = 1000
 psnr_interval = 50
@@ -28,8 +29,10 @@ activation_start = False
 print_loss_interval = 1000
 n_runs = 5
 
+# Model and image setup
 models = {
     "HashSIREN": HashSIREN,
+    "Siren": Siren,
     "HashReLU": HashRelu,
 }
 images = {
@@ -40,6 +43,7 @@ images = {
 
 for image_name, image_tensor in images.items():
     for model_name, model_class in models.items():
+        # Prepare input grid
         visual_input = torch.stack(torch.meshgrid(
             torch.linspace(0, 1, steps=256),
             torch.linspace(0, 1, steps=256),
@@ -87,6 +91,7 @@ for image_name, image_tensor in images.items():
             psnr_values.append(run_psnr_values)
             ssim_values.append(run_ssim_values)
             time_values.append(run_time_values)
+        # Compute mean and std for metrics
         mean_psnr = np.mean(psnr_values, axis=0)
         std_psnr = np.std(psnr_values, axis=0)
         mean_ssim = np.mean(ssim_values, axis=0)
@@ -95,6 +100,7 @@ for image_name, image_tensor in images.items():
         psnr_mean_std = {"normal_loss": (mean_psnr, std_psnr)}
         ssim_mean_std = {"normal_loss": (mean_ssim, std_ssim)}
         mean_time_ticks_dict = {"normal_loss": mean_time_ticks}
+        # Save results and plots
         save_metrics_to_csv(psnr_mean_std, ssim_mean_std, mean_time_ticks_dict, model_dir, image_name)
         plot_compare_steps(model_name, model_dir, psnr_mean_std, ssim_mean_std, psnr_interval, output_base_dir, image_name, test_name, n_runs)
         plot_compare_time(model_name, model_dir, psnr_mean_std, ssim_mean_std, mean_time_ticks_dict, psnr_interval, output_base_dir, image_name, test_name, n_runs) 
