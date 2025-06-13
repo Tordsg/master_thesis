@@ -2,14 +2,14 @@
 
 This repository contains scripts for comparing neural field models (SIREN, HashSIREN, HashReLU) on 2D image datasets using various loss functions and metrics.
 
-## 📂 Key Files
+## Key Files
 
 - `compare_novel_learning.py` — Main script for training and comparing models with multiple loss functions.
 - `train.py` — Simplified script that only measures for one loss (normal_loss) and uses single lists for metrics.
 - `networks.py` — Model definitions (uses [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) Python bindings).
 - `utils.py` — Utility functions for training, metrics, and visualization.
 
-## 🚀 Quickstart
+## Quickstart
 
 ### 1. Clone the repository
 
@@ -67,17 +67,17 @@ python train.py
 
 This script only measures for one loss (normal_loss) and uses single lists for metrics, saving results in the `train/` directory.
 
-## 📝 Notes
+## Notes
 
 - The scripts require a CUDA-capable GPU.
 - You can adjust hyperparameters, models, and images at the top of the scripts.
 - Results (metrics, images, plots) are saved in subfolders of `novel/` and `train/`.
 
-## 📧 Contact
+## Contact
 
 For questions or contributions, open an issue or contact [@Tordsg](https://github.com/Tordsg).
 
-## 📚 References
+## References
 
 - Sitzmann, V., Martel, J. N. P., Bergman, A. W., Lindell, D. B., & Wetzstein, G. (2020). "Implicit Neural Representations with Periodic Activation Functions (SIREN)." *NeurIPS 2020*. [arXiv:2006.09661](https://arxiv.org/abs/2006.09661)
 - Müller, T., Evans, A., Schied, C., & Keller, A. (2022). "Instant Neural Graphics Primitives with a Multiresolution Hash Encoding." *SIGGRAPH 2022*. [arXiv:2201.05989](https://arxiv.org/abs/2201.05989)  
